@@ -7,6 +7,27 @@ public class Main {
     public static void main(String[] args) {
         rwFiles("./src/files/input.txt");
     }
+    public static void runCLI() {
+        Scanner scanner = new Scanner(System.in);
+        List<String> history = new ArrayList<>();  
+
+        while (true) {
+            System.out.print("Enter expression (or 'exit' to quit): ");
+            String input = scanner.nextLine();
+            if (input.equalsIgnoreCase("exit")) break;
+            history.add(input);
+            try {
+                double result = evaluateExpression(input);
+                System.out.println("Result: " + result);
+            } catch (ArithmeticException e) {
+                System.out.println("Math Error: " + e.getMessage());
+            } catch (Exception e) {
+                System.out.println("Invalid Expression: " + input);
+            }
+        }
+        scanner.close();
+    }
+
 
     public static void rwFiles(String filePath) {
         try {
