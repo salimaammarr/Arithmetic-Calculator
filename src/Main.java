@@ -48,40 +48,94 @@ public class Main {
     }
 
     public static double evaluateExpression(String expression) {
+        opStk = new Stack<>(10);
+        valStk = new Stack<>(10);
+        expression = expression.replaceAll("\\s+", "");
         for (int i = 0; i < expression.length(); i++) {
             char ch = expression.charAt(i);
             if (Character.isDigit(ch)) {
-                int num = 0;
-                while (i < expression.length() && Character.isDigit(expression.charAt(i))) {
-                    num = num * 10 + (expression.charAt(i) - '0');
+                StringBuilder number = new StringBuilder();
+                while (i < expression.length() &&
+                      (Character.isDigit(expression.charAt(i)) || expression.charAt(i) == '.')) {
+                    number.append(expression.charAt(i));
                     i++;
                 }
-                i--;
-                valStk.push((double) num);
-            } else if (ch == '(') {
-                opStk.push(ch);
-            } else if (ch == ')') {
-                while (opStk.peek() != '(') {
-                    doOp();
+                i--;  
+                valStk.push(Double.parseDouble(number.toString()));
+            } else if (Character.isLetter(ch)) {
+                StringBuilder func = new StringBuilder();
+                while (i < expression.length() && Character.isLetter(expression.charAt(i))) {
+                    func.append(expression.charAt(i));
+                    i++;
                 }
-                opStk.pop();
+                if (i < expression.length() && expression.charAt(i) == '(') {
+                    String funcName = func.toString();
+                    switch (funcName) {
+                        case "sin":
+                            opStk.push('s');
+                            break;
+                        case "cos":
+                            opStk.push('c');
+                            break;
+                        case "tan":
+                            opStk.push('t');
+                            break;
+                        case "log":
+                            opStk.push('l');
+                            break;
+                        case "exp":
+                            opStk.push('e');
+                            break;
+                        case "sqrt":
+                            opStk.push('q');
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unknown function: " + funcName);
+                    }    opStk.push('(');
+                } else {
+                    throw new IllegalArgumentException("Expected '(' after function name: " + func.toString());
+                }
             } else if (isOperator(ch)) {
                 while (!opStk.isEmpty() && precedence(ch) <= precedence(opStk.peek())) {
                     doOp();
                 }
                 opStk.push(ch);
+            } else if (ch == '(') {
+                opStk.push(ch);
+            } else if (ch == ')') {
+                while (!opStk.isEmpty() && opStk.peek() != '(') {
+                    doOp();
+                }
+                if (opStk.isEmpty()) {
+                    throw new IllegalArgumentException("Mismatched parentheses");
+                }
+                opStk.pop(); 
+                if (!opStk.isEmpty() && isFunction(opStk.peek())) {
+                    char funcOp = opStk.pop();
+                    double operand = valStk.pop();
+                    double result = applyFunction(funcOp, operand);
+                    valStk.push(result);
+                }
+            } else {
+                throw new IllegalArgumentException("Invalid character encountered: " + ch);
             }
         }
 
         while (!opStk.isEmpty()) {
             doOp();
         }
-
+        if (valStk.isEmpty()) {
+            throw new IllegalArgumentException("Invalid Expression");
+        }
         return valStk.pop();
     }
 
     private static boolean isOperator(char ch) {
         return ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '^' || ch == '>' || ch == '<' || ch == '≥' || ch == '≤' || ch == '=' || ch == '!';
+    }
+    private static boolean isFunction(char ch) {
+        return ch == 's' || ch == 'c' || ch == 't' ||
+               ch == 'l' || ch == 'e' || ch == 'q';
     }
 
     private static int precedence(char operator) {
@@ -103,16 +157,23 @@ public class Main {
             case '!':
                 return -1;
             default:
+            if (isFunction(operator))
+                    return 4;
                 return -1;
         }
     }
 
     private static void doOp() {
-        double b = valStk.pop();
-        double a = valStk.pop();
         char op = opStk.pop();
-        double result = applyOperator(op, b, a);
-        valStk.push(result);
+        if (isFunction(op)) {
+            double operand = valStk.pop();
+            double result = applyFunction(op, operand);
+            valStk.push(result);
+        } else {double b = valStk.pop();
+            double a = valStk.pop();
+            double result = applyOperator(op, a, b);
+            valStk.push(result);
+        }
     }
 
     private static double applyOperator(char operator, double b, double a) {
@@ -144,6 +205,30 @@ public class Main {
                 return a != b ? 1 : 0;
             default:
                 throw new IllegalArgumentException("Unknown operator: " + operator);
+        }
+    }
+    private static double applyFunction(char function, double operand) {
+        switch (function) {
+            case 's': 
+                return Math.sin(Math.toRadians(operand));
+            case 'c': 
+                return Math.cos(Math.toRadians(operand));
+            case 't': 
+                return Math.tan(Math.toRadians(operand));
+            case 'l':
+                if (operand <= 0) {
+                    throw new ArithmeticException("Logarithm operand must be positive");
+                }
+                return Math.log(operand);
+            case 'e': 
+                return Math.exp(operand);
+            case 'q': 
+                if (operand < 0) {
+                    throw new ArithmeticException("Square root operand must be non-negative");
+                }
+                return Math.sqrt(operand);
+            default:
+                throw new IllegalArgumentException("Unknown function: " + function);
         }
     }
 }
